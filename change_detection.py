@@ -9,7 +9,7 @@ class ChangeDetectionTest():
     def __init__(self, fit_window:int, sequence_window:int, gamma = 1):
         self.fit_window = fit_window
         self.sequence_window = sequence_window
-        self.n_sequences = self.fit_window // self.sequence_window
+        self._n_sequences = self.fit_window // self.sequence_window
 
         self.gamma = gamma
 
@@ -26,7 +26,7 @@ class ChangeDetectionTest():
         rep = f'CDT params: \n' + \
         f'- fitting window length: {self.fit_window} \n' + \
         f'- sequence window lenght: {self.sequence_window} \n' + \
-        f'- number of seqences: {self.n_sequences}'
+        f'- number of seqences: {self._n_sequences}'
 
         return rep
 
@@ -78,8 +78,8 @@ class ChangeDetectionTest():
         setup_window = [data[i] for i in range(len(data))]
 
         # Create lists of seqence means and vars from setup sequences
-        means_setup = [np.mean(setup_window[i*self.sequence_window:(i+1)*self.sequence_window]) for i in range(self.n_sequences)]
-        vars_setup = [np.var(setup_window[i*self.sequence_window:(i+1)*self.sequence_window]) for i in range(self.n_sequences)]
+        means_setup = [np.mean(setup_window[i*self.sequence_window:(i+1)*self.sequence_window]) for i in range(self._n_sequences)]
+        vars_setup = [np.var(setup_window[i*self.sequence_window:(i+1)*self.sequence_window]) for i in range(self._n_sequences)]
 
         # Normalize the vars list export h_coeff
         self.h_coeff = 1 - (np.mean(setup_window) * self._skewness(setup_window)) / 3 * np.var(setup_window)**2
@@ -98,12 +98,14 @@ class ChangeDetectionTest():
     def _confidcence_interval(self, mu: float, sigma:float) -> tuple:
         ci_min = mu - self.gamma * sigma
         ci_max = mu + self.gamma * sigma
-        assert ci_min < ci_max
+
+        # Equal has to be allowed for interpolation based fills
+        assert ci_min <= ci_max, f'ci_min should be lower then ci_max, while {ci_min} is higher then {ci_max}'
         return (ci_min, ci_max)
 
     def _get_ci_params(self, data:np.ndarray) -> tuple:
         mu = np.mean(data)
-        sigma = np.std(data) / np.sqrt(self.n_sequences)
+        sigma = np.std(data) / np.sqrt(self._n_sequences)
         return mu, sigma
 
     def _get_ci(self, data:np.ndarray) -> tuple:
@@ -129,3 +131,11 @@ class ChangeDetectionTest():
         denom = np.var(data)
 
         return nom / denom**(1.5) 
+    
+    @property
+    def n_sequences(self):
+        return self._n_sequences
+        
+    @n_sequences.setter
+    def n_sequences(self, value):
+        self._n_sequences = value
